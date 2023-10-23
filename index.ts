@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import yargs from 'yargs';
 import * as fs from 'fs';
 
@@ -36,7 +38,7 @@ class Relationship {
     }
   
     static create(line: string, model: Model): Relationship {
-        const relationField = line.replace(/[ ,]+/g, ",").trim();
+        const relationField = line.trim().replace(/[ ,]+/g, ",");
         const relationParts = relationField.split(",");
         const relationInfo = line.match(/@relation\((.*?)\)/)![1].split(",");
 
