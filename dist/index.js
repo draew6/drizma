@@ -139,7 +139,7 @@ yargs_1.default
             model = null;
         }
     }
-    const drizzleCode = models.map((model) => model.export()).join('');
+    const drizzleCode = models.filter(model => model.relationships.length > 0).map((model) => model.export()).join('');
     fs.appendFileSync(drizzlePath, drizzleCode, 'utf-8');
 })
     .help().argv;
