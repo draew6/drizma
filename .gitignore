@@ -1,0 +1,10 @@
+/.idea
+/dd.py
+/node_modules
+/parser.kt
+/parser.nim
+/parser.py
+/parser.ts
+/qvenv
+/schema.prisma
+/schemaU.prisma
