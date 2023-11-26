@@ -1,6 +1,6 @@
 {
   "name": "drizma",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Create Relations in Drizzle Schema based on Prisma schema",
   "main": "dist/index.js",
   "scripts": {

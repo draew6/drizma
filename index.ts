@@ -19,7 +19,7 @@ class Relationship {
 
   ) {
 
-    if (this.fields && this.references) {
+    if (this.fields?.length && this.references?.length) {
       this.fieldsFull = this.fields.map(field =>
         this.model.name + "." + field
       );
@@ -88,7 +88,8 @@ class Model {
   constructor(
     public name: string,
     public drizzle: string = "",
-    public relationships: Relationship[] = []
+    public relationships: Relationship[] = [],
+    public fields: [string, string][] = []
 
   ) {
     this.drizzle = `export const ${this.name}Relations = relations(${this.name}, ({one, many}) => ({ \n`;
@@ -97,6 +98,47 @@ class Model {
   createRelationship(line: string): void {
     const relationship = Relationship.create(line, this);
     this.relationships.push(relationship);
+  }
+
+  createField(line: string): void {
+    const field = line.trim().replace(/[ ,]+/g, ",");
+    const fieldParts = field.split(",");
+    const fieldName = fieldParts[0];
+    const fieldType = fieldParts[1];
+    this.fields.push([fieldName, fieldType]);
+  }
+
+  createRelationshipsFromFields(modelNames: string[]): void {
+    for (const field of this.fields) {
+      const fieldName = field[0];
+      let fieldType = field[1];
+
+      let optional = false
+      let many = false
+
+      if (fieldType.includes("[]")) {
+        many = true
+        fieldType = fieldType.replace("[]", "")
+      } else if (fieldType.includes("?")) {
+        optional = true
+        fieldType = fieldType.replace("?", "")
+      }
+
+      if (modelNames.includes(fieldType)) {
+        const otherModelName = fieldType
+        const name = `${this.name}${fieldName[0].toUpperCase() + fieldName.slice(1)}`
+        const alias = null
+        const fields = null
+        const references = null
+        const model = this
+        const fieldsFull: string[] = []
+        const referencesFull: string[] = []
+        const drizzle = ""
+        const relationship = new Relationship(many, otherModelName, name, alias, fields, references, model, fieldsFull, referencesFull, drizzle)
+        this.relationships.push(relationship)
+
+      }
+    }
   }
 
   export(): string {
@@ -149,11 +191,26 @@ yargs
           }
           model = null;
         }
+        else if (model) {
+          model.createField(line);
+        }
+      }
+      for (const model of models) {
+        model.createRelationshipsFromFields(models.map(model => model.name));
       }
 
       const drizzleCode = models.filter(model => model.relationships.length > 0).map((model) => model.export()).join('');
+      
+      fs.readFile(drizzlePath, 'utf8', (err, data) => {
+        const importLine = `import {relations } from "drizzle-orm"`
+        const newData = (importLine + '\n' + (data || '\n') + '\n' + drizzleCode).replace(/: unknown\("([^"]+)"\)/g, (match, p1) => `: ${p1}("${p1}")`);
 
-      fs.appendFileSync(drizzlePath, drizzleCode, 'utf-8');
+        fs.writeFile(drizzlePath, newData, 'utf8', (err) => {
+          if (err) {
+            console.error(err);
+          }
+        });
+      });
     }
   )
   .help().argv;

@@ -31,6 +31,7 @@ const yargs_1 = __importDefault(require("yargs"));
 const fs = __importStar(require("fs"));
 class Relationship {
     constructor(isMany, otherModelName, name, alias, fields, references, model, fieldsFull = [], referencesFull = [], drizzle = "") {
+        var _a, _b;
         this.isMany = isMany;
         this.otherModelName = otherModelName;
         this.name = name;
@@ -41,7 +42,7 @@ class Relationship {
         this.fieldsFull = fieldsFull;
         this.referencesFull = referencesFull;
         this.drizzle = drizzle;
-        if (this.fields && this.references) {
+        if (((_a = this.fields) === null || _a === void 0 ? void 0 : _a.length) && ((_b = this.references) === null || _b === void 0 ? void 0 : _b.length)) {
             this.fieldsFull = this.fields.map(field => this.model.name + "." + field);
             this.referencesFull = this.references.map(reference => this.otherModelName + "." + reference);
             this.drizzle = `\t${this.name}:${this.isMany ? "many" : "one"}(${this.otherModelName}, { fields: [${this.fieldsFull.join(",")}], references: [${this.referencesFull.join(",")}]} )`;
@@ -85,15 +86,52 @@ class Relationship {
     }
 }
 class Model {
-    constructor(name, drizzle = "", relationships = []) {
+    constructor(name, drizzle = "", relationships = [], fields = []) {
         this.name = name;
         this.drizzle = drizzle;
         this.relationships = relationships;
+        this.fields = fields;
         this.drizzle = `export const ${this.name}Relations = relations(${this.name}, ({one, many}) => ({ \n`;
     }
     createRelationship(line) {
         const relationship = Relationship.create(line, this);
         this.relationships.push(relationship);
+    }
+    createField(line) {
+        const field = line.trim().replace(/[ ,]+/g, ",");
+        const fieldParts = field.split(",");
+        const fieldName = fieldParts[0];
+        const fieldType = fieldParts[1];
+        this.fields.push([fieldName, fieldType]);
+    }
+    createRelationshipsFromFields(modelNames) {
+        for (const field of this.fields) {
+            const fieldName = field[0];
+            let fieldType = field[1];
+            let optional = false;
+            let many = false;
+            if (fieldType.includes("[]")) {
+                many = true;
+                fieldType = fieldType.replace("[]", "");
+            }
+            else if (fieldType.includes("?")) {
+                optional = true;
+                fieldType = fieldType.replace("?", "");
+            }
+            if (modelNames.includes(fieldType)) {
+                const otherModelName = fieldType;
+                const name = `${this.name}${fieldName[0].toUpperCase() + fieldName.slice(1)}`;
+                const alias = null;
+                const fields = null;
+                const references = null;
+                const model = this;
+                const fieldsFull = [];
+                const referencesFull = [];
+                const drizzle = "";
+                const relationship = new Relationship(many, otherModelName, name, alias, fields, references, model, fieldsFull, referencesFull, drizzle);
+                this.relationships.push(relationship);
+            }
+        }
     }
     export() {
         let code = this.drizzle;
@@ -138,8 +176,36 @@ yargs_1.default
             }
             model = null;
         }
+        else if (model) {
+            model.createField(line);
+        }
+    }
+    for (const model of models) {
+        model.createRelationshipsFromFields(models.map(model => model.name));
     }
     const drizzleCode = models.filter(model => model.relationships.length > 0).map((model) => model.export()).join('');
-    fs.appendFileSync(drizzlePath, drizzleCode, 'utf-8');
+    /*
+          const otherModels:string[] = []
+          for (const model of models) {
+            otherModels.concat(model.relationships.map(relationship => relationship.otherModelName))
+          }
+          for (const otherModel of [...new Set(otherModels)]) {
+            const model = new Model(otherModel);
+            for (const existingModel of models) {
+              for (const relationship of existingModel.relationships) {
+                if (relationship.otherModelName === otherModel) {
+                  Relationship.create(
+            }
+          }
+    */
+    fs.readFile(drizzlePath, 'utf8', (err, data) => {
+        const importLine = `import {relations } from "drizzle-orm"`;
+        const newData = (importLine + '\n' + (data || '\n') + '\n' + drizzleCode).replace(/: unknown\("([^"]+)"\)/g, (match, p1) => `: ${p1}("${p1}")`);
+        fs.writeFile(drizzlePath, newData, 'utf8', (err) => {
+            if (err) {
+                console.error(err);
+            }
+        });
+    });
 })
     .help().argv;
