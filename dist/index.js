@@ -120,7 +120,7 @@ class Model {
             }
             if (modelNames.includes(fieldType)) {
                 const otherModelName = fieldType;
-                const name = `${this.name}${fieldName[0].toUpperCase() + fieldName.slice(1)}`;
+                const name = fieldName;
                 const alias = null;
                 const fields = null;
                 const references = null;
@@ -184,20 +184,6 @@ yargs_1.default
         model.createRelationshipsFromFields(models.map(model => model.name));
     }
     const drizzleCode = models.filter(model => model.relationships.length > 0).map((model) => model.export()).join('');
-    /*
-          const otherModels:string[] = []
-          for (const model of models) {
-            otherModels.concat(model.relationships.map(relationship => relationship.otherModelName))
-          }
-          for (const otherModel of [...new Set(otherModels)]) {
-            const model = new Model(otherModel);
-            for (const existingModel of models) {
-              for (const relationship of existingModel.relationships) {
-                if (relationship.otherModelName === otherModel) {
-                  Relationship.create(
-            }
-          }
-    */
     fs.readFile(drizzlePath, 'utf8', (err, data) => {
         const importLine = `import {relations } from "drizzle-orm"`;
         const newData = (importLine + '\n' + (data || '\n') + '\n' + drizzleCode).replace(/: unknown\("([^"]+)"\)/g, (match, p1) => `: ${p1}("${p1}")`);

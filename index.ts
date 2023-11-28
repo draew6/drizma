@@ -126,7 +126,7 @@ class Model {
 
       if (modelNames.includes(fieldType)) {
         const otherModelName = fieldType
-        const name = `${this.name}${fieldName[0].toUpperCase() + fieldName.slice(1)}`
+        const name = fieldName
         const alias = null
         const fields = null
         const references = null
