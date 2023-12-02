@@ -157,7 +157,9 @@ yargs_1.default
     const drizzlePath = argv.drizzle_path;
     console.log(`Processing schema at: ${prismaPath}`);
     const models = [];
-    const schema = fs.readFileSync(prismaPath, 'utf-8').split('\n');
+    const enums = [];
+    const schemaContent = fs.readFileSync(prismaPath, 'utf-8');
+    const schema = schemaContent.split('\n');
     let model = null;
     for (const line of schema) {
         if (line.trim().startsWith('//')) {
@@ -166,6 +168,10 @@ yargs_1.default
         else if (line.match(/model (.*?) {/)) {
             const name = line.replace('model', '').replace('{', '').trim();
             model = new Model(name);
+        }
+        else if (line.match(/enum (.*?) {/)) {
+            const name = line.replace('enum', '').replace('{', '').trim();
+            enums.push(name);
         }
         else if (model && /@relation/.test(line)) {
             model.createRelationship(line);
@@ -192,6 +198,16 @@ yargs_1.default
                 console.error(err);
             }
         });
+    });
+    let testSchema = schemaContent;
+    for (const enumName of enums) {
+        testSchema = testSchema.replace(new RegExp(enumName, 'g'), "String");
+    }
+    testSchema = testSchema.replace(/enum\s+\w+\s*\{[^}]*\}/g, '').replace(/(String\s+@default\()([^\s'"]+)(\))/g, '$1"$2"$3').replace("postgresql", "sqlite");
+    fs.writeFile(prismaPath.replace(".prisma", "Test.prisma"), testSchema, 'utf8', (err) => {
+        if (err) {
+            console.error(err);
+        }
     });
 })
     .help().argv;
