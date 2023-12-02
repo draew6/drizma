@@ -2,6 +2,7 @@
 
 import yargs from 'yargs';
 import * as fs from 'fs';
+import test from 'node:test';
 
 
 class Relationship {
@@ -173,8 +174,10 @@ yargs
       console.log(`Processing schema at: ${prismaPath}`);
 
       const models: Model[] = [];
+      const enums: string[] = [];
 
-      const schema = fs.readFileSync(prismaPath, 'utf-8').split('\n');
+      const schemaContent = fs.readFileSync(prismaPath, 'utf-8')
+      const schema = schemaContent.split('\n');
 
       let model: Model | null = null;
       for (const line of schema) {
@@ -183,7 +186,11 @@ yargs
         } else if (line.match(/model (.*?) {/)) {
           const name = line.replace('model', '').replace('{', '').trim();
           model = new Model(name);
-        } else if (model && /@relation/.test(line)) {
+        } else if (line.match(/enum (.*?) {/)) {
+          const name = line.replace('enum', '').replace('{', '').trim();
+          enums.push(name);
+        }
+         else if (model && /@relation/.test(line)) {
           model.createRelationship(line);
         } else if (model && line.includes('}')) {
           if (model) {
@@ -211,6 +218,17 @@ yargs
           }
         });
       });
+      let testSchema = schemaContent
+      for (const enumName of enums) {
+        testSchema = testSchema.replace(new RegExp(enumName, 'g'), "String")
+      }
+
+      testSchema = testSchema.replace(/enum\s+\w+\s*\{[^}]*\}/g, '').replace(/(String\s+@default\()([^\s'"]+)(\))/g,'$1"$2"$3');
+      fs.writeFile(prismaPath.replace(".prisma","Test.prisma"), testSchema, 'utf8', (err) => {
+        if (err) {
+          console.error(err);
+        }}
+        )
     }
   )
   .help().argv;
