@@ -223,7 +223,12 @@ yargs
         testSchema = testSchema.replace(new RegExp(enumName, 'g'), "String")
       }
 
-      testSchema = testSchema.replace(/enum\s+\w+\s*\{[^}]*\}/g, '').replace(/(String\s+@default\()([^\s'"]+)(\))/g,'$1"$2"$3').replace("postgresql", "sqlite");
+      testSchema = testSchema
+      .replace(/enum\s+\w+\s*\{[^}]*\}/g, '')
+      .replace(/(String\s+@default\()([^\s'"]+)(\))/g,'$1"$2"$3')
+      .replace("postgresql", "sqlite")
+      .replace(`env("DATABASE_URL")`,`"file:./test/test.db"`)
+  
       fs.writeFile(prismaPath.replace(".prisma","Test.prisma"), testSchema, 'utf8', (err) => {
         if (err) {
           console.error(err);
